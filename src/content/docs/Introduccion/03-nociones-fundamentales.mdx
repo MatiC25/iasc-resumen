@@ -1,0 +1,49 @@
+---
+title: Nociones fundamentales
+description: Concurrencia, paralelismo, asincronía y operaciones bloqueantes y no bloqueantes.
+sidebar:
+  order: 3
+---
+
+import Scheduler from '../../../components/scheduler/Scheduler.jsx';
+
+## Concurrencia
+
+Hay concurrencia cuando varias tareas tienen contextos de ejecución activos durante un mismo período. En un núcleo, el planificador puede guardar el estado de una tarea y reanudar otra. Ese **cambio de contexto** tiene un costo, pero repartir turnos permite que varias tareas progresen. Por ejemplo, un editor puede seguir recibiendo texto mientras guarda un borrador.
+
+El orden de las operaciones puede variar. Si dos tareas leen un contador con valor 0 y después ambas escriben 1, se pierde un incremento. Esa **condición de carrera** puede aparecer incluso en un núcleo, si las lecturas y escrituras se intercalan.
+
+## Paralelismo
+
+Hay paralelismo cuando dos o más operaciones se ejecutan simultáneamente. El libro distingue paralelismo a nivel de bits, instrucciones, datos y tareas. El simulador muestra este último: con cuatro núcleos, cuatro tareas listas pueden hacer trabajo de CPU al mismo tiempo.
+
+El tiempo total depende de cuánto trabajo puede repartirse. Para una carga **CPU-bound**, el cálculo suele dominar. Para una carga **I/O-bound**, suele dominar la espera por red, disco u otro dispositivo. Más núcleos pueden ayudar poco cuando hay escaso trabajo de CPU listo. En un sistema real, coordinación, comunicación, memoria compartida y sincronización pueden reducir o incluso revertir la mejora.
+
+## Asincronía
+
+Una tarea puede iniciar una operación y dejar su continuación registrada para más tarde. Por ejemplo, al empezar una lectura en una corrutina, un `await` puede suspender esa corrutina y liberar el hilo para otra tarea. La finalización de la I/O vuelve a habilitar la continuación, que se ejecuta cuando el planificador le da un turno. Un solo hilo puede atender varias continuaciones de esta manera, así que la asincronía por sí sola no requiere paralelismo de CPU.
+
+## Bloqueante y no bloqueante
+
+- **Bloqueante.** Una lectura puede retener al hilo que la llamó hasta que lleguen datos. Otros hilos podrían avanzar si existen. Si ese hilo es el único que atiende el bucle de eventos, sus otras tareas quedan demoradas.
+- **No bloqueante.** La llamada devuelve el control sin esperar los datos. Un socket no bloqueante puede indicar que la lectura debe intentarse más tarde, y un selector puede indicar cuándo está listo. Una API asíncrona también puede ofrecer una notificación aunque implemente la operación con otro hilo.
+
+Suspender una tarea conserva su continuación y deja libre el hilo. Bloquear un hilo impide que ese hilo ejecute cualquier tarea mientras espera. Liberarlo solo reduce el tiempo total si hay trabajo que aprovechar durante la espera y ese beneficio supera el costo de coordinarlo.
+
+Fuentes del libro: [Concurrencia y paralelismo](https://github.com/arquitecturas-concurrentes/iasc-book/blob/source/src/adocs/concurrencia_paralelismo.adoc) · [Event loop](https://github.com/arquitecturas-concurrentes/iasc-book/blob/source/src/adocs/event_loop.adoc)
+
+## Simulador de ejecución
+
+Activá **Comparar** y probá **Concurrencia** frente a **Paralelismo** con carga CPU-bound. Después elegí carga I/O-bound y compará **I/O bloqueante** con **I/O no bloqueante**. Arrastrá la escena para rotar y usá la rueda o el gesto de pellizco para hacer zoom. Los estados y la cronología también se pueden seguir en 2D.
+
+<Scheduler client:visible />
+
+### Cómo leer los tiempos
+
+- El motor calcula el tiempo simulado en pasos de 50 ms. El reloj visible avanza entre eventos relevantes. Usá **Siguiente evento** o **Paso anterior** para seguirlos a tu ritmo. La velocidad guiada deja al menos 1,2 segundos reales para leer cada evento y conserva los tiempos de ejecución calculados.
+- La CPU ocupada suma trabajo y cambios de contexto en todos los núcleos. La CPU ociosa incluye los intervalos en que el único hilo está bloqueado. Ambas se miden en ms·núcleo. Dos núcleos trabajando durante 100 ms acumulan 200 ms·núcleo.
+- La espera de una tarea suma su tiempo en cola, en I/O y durante la preparación del cambio de contexto.
+- La comparación usa las mismas tareas y duraciones. El modelo parte de una cola compartida, da turnos de hasta 200 ms y cobra el costo configurado cuando un núcleo cambia de tarea. Cada tarea con I/O hace 50 ms de CPU antes de solicitarla. En carga mixta, la mitad redondeada hacia arriba solicita I/O.
+- Asincronía y no bloqueante comparten la misma política en esta demostración, de modo que sus tiempos coinciden. Concurrencia y paralelismo también suspenden las tareas durante la I/O para que el número de núcleos sea la diferencia al compararlos.
+- El modelo permite operaciones de I/O simultáneas e independientes y omite contención, migración de caché y costos de comunicación. Los totales sirven para comparar estas reglas, no como medición de una máquina real.
+

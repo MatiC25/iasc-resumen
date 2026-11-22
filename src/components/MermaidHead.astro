@@ -1,0 +1,90 @@
+---
+import Head from '@astrojs/starlight/components/Head.astro';
+---
+
+<Head {...Astro.props} />
+
+<script>
+  const blocks = document.querySelectorAll<HTMLPreElement>(
+    'main pre[data-language="mermaid"], main pre:has(> code.language-mermaid)',
+  );
+
+  if (blocks.length) {
+    const diagrams = [...blocks].map((block) => {
+      const lines = [...block.querySelectorAll('.ec-line .code')];
+      const source = lines.length
+        ? lines.map((line) => line.textContent).join('\n')
+        : block.textContent ?? '';
+      const original = block.closest('.expressive-code') ?? block;
+      const figure = document.createElement('div');
+      figure.className = 'mermaid-diagram';
+      figure.hidden = true;
+      original.before(figure);
+      return { source, original, figure };
+    });
+
+    const { default: mermaid } = await import('mermaid');
+    const root = document.documentElement;
+    let theme: string | undefined;
+    let version = 0;
+    let pending = Promise.resolve();
+
+    function renderDiagrams() {
+      const nextTheme = root.dataset.theme === 'dark' ? 'dark' : 'default';
+      if (nextTheme === theme) return;
+      theme = nextTheme;
+      const renderVersion = ++version;
+
+      pending = pending.then(async () => {
+        if (renderVersion !== version) return;
+        mermaid.initialize({
+          startOnLoad: false,
+          securityLevel: 'strict',
+          theme: nextTheme,
+          suppressErrorRendering: true,
+          flowchart: { htmlLabels: false, useMaxWidth: false },
+        });
+
+        for (const [index, { source, original, figure }] of diagrams.entries()) {
+          if (renderVersion !== version) return;
+          try {
+            const { svg } = await mermaid.render(`iasc-mermaid-${renderVersion}-${index}`, source);
+            if (renderVersion !== version) return;
+            figure.innerHTML = svg;
+            const graphic = figure.querySelector('svg');
+            if (graphic && !graphic.hasAttribute('aria-labelledby')) graphic.setAttribute('aria-label', 'Diagrama Mermaid');
+            figure.hidden = false;
+            original.classList.add('mermaid-source-hidden');
+          } catch (error) {
+            figure.hidden = true;
+            original.classList.remove('mermaid-source-hidden');
+            console.warn('No se pudo renderizar el diagrama Mermaid.', error);
+          }
+        }
+      });
+    }
+
+    renderDiagrams();
+    new MutationObserver(renderDiagrams).observe(root, { attributeFilter: ['data-theme'] });
+  }
+</script>
+
+<style is:global>
+  .mermaid-diagram {
+    overflow-x: auto;
+    padding: .75rem;
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: .5rem;
+    background: var(--sl-color-bg);
+  }
+
+  .mermaid-diagram svg {
+    max-width: none;
+    margin-inline: auto;
+  }
+
+  .mermaid-diagram[hidden], .mermaid-source-hidden {
+    display: none !important;
+  }
+</style>
+

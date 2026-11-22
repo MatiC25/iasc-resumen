@@ -1,0 +1,184 @@
+---
+import { getCollection } from 'astro:content';
+import Search from '@astrojs/starlight/components/Search.astro';
+import { Icon } from '@astrojs/starlight/components';
+
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const index = import.meta.env.DEV
+  ? (await getCollection('docs', ({ id, data }) => id !== '404' && data.pagefind !== false))
+      .map(({ id, data, body }) => ({
+        title: data.title,
+        description: data.description ?? '',
+        url: id === 'index' ? `${base}/` : `${base}/${encodeURI(id)}/`,
+        lines: (body ?? '')
+          .replace(/<details\b[^>]*\bdata-pagefind-ignore\b[^>]*>[\s\S]*?<\/details>/gi, '')
+          .replace(/^import .*$/gm, '')
+          .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+          .replace(/<[^>]+>/g, ' ')
+          .split(/\r?\n/)
+          .map((line) => line.replace(/^[#>\s]+|[`*]/g, '').trim())
+          .filter(Boolean),
+      }))
+  : [];
+---
+
+{import.meta.env.DEV ? (
+  <iasc-dev-search class={Astro.props.class} data-index={JSON.stringify(index)}>
+    <button type="button" data-open aria-label="Buscar" aria-keyshortcuts="Control+K Meta+K">
+      <Icon name="magnifier" />
+      <span class="sl-hidden md:sl-block" aria-hidden="true">Buscar</span>
+    </button>
+    <dialog aria-labelledby="iasc-search-title">
+      <div class="search-heading">
+        <label id="iasc-search-title" for="iasc-search-query">Buscar en el resumen</label>
+        <form method="dialog"><button type="submit">Cerrar</button></form>
+      </div>
+      <input id="iasc-search-query" type="search" placeholder="Tema, palabra o concepto" autocomplete="off" autofocus />
+      <p data-status role="status">Escribí al menos dos caracteres.</p>
+      <ul data-results></ul>
+    </dialog>
+  </iasc-dev-search>
+) : (
+  <Search {...Astro.props} />
+)}
+
+<script>
+  type Entry = { title: string; description: string; url: string; lines: string[] };
+
+  function normalize(text: string) {
+    return text.toLocaleLowerCase('es').normalize('NFD').replace(/\p{M}/gu, '');
+  }
+
+  class IascDevSearch extends HTMLElement {
+    connectedCallback() {
+      const dialog = this.querySelector('dialog')!;
+      const input = this.querySelector('input')!;
+      const status = this.querySelector<HTMLElement>('[data-status]')!;
+      const results = this.querySelector('ul')!;
+      const entries = (JSON.parse(this.dataset.index ?? '[]') as Entry[]).map((entry) => ({
+        ...entry,
+        titleText: normalize(entry.title),
+        descriptionText: normalize(entry.description),
+        lineTexts: entry.lines.map(normalize),
+      }));
+
+      const open = () => {
+        if (dialog.open) return;
+        dialog.showModal();
+        input.focus();
+      };
+
+      this.querySelector('[data-open]')!.addEventListener('click', open);
+      this.addEventListener('keydown', (event) => {
+        if (event.key === 'ArrowDown' && event.target === input) {
+          results.querySelector('a')?.focus();
+          event.preventDefault();
+        }
+      });
+
+      this.shortcut = (event) => {
+        if (!(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== 'k') return;
+        event.preventDefault();
+        open();
+      };
+      document.addEventListener('keydown', this.shortcut);
+
+      input.addEventListener('input', () => {
+        const query = normalize(input.value.trim());
+        results.replaceChildren();
+        if (query.length < 2) {
+          status.textContent = 'Escribí al menos dos caracteres.';
+          return;
+        }
+
+        const terms = query.split(/\s+/);
+        const matches = entries.flatMap((entry) => {
+          let score = 0;
+          for (const term of terms) {
+            if (entry.titleText.includes(term)) score += 5;
+            else if (entry.descriptionText.includes(term)) score += 3;
+            else if (entry.lineTexts.some((line) => line.includes(term))) score += 1;
+            else return [];
+          }
+          const line = entry.lineTexts.findIndex((text) => terms.some((term) => text.includes(term)));
+          return [{ entry, score, line }];
+        }).sort((a, b) => b.score - a.score);
+
+        status.textContent = matches.length
+          ? `${matches.length} ${matches.length === 1 ? 'resultado' : 'resultados'}${matches.length > 12 ? ' · primeros 12' : ''}`
+          : 'No se encontraron resultados.';
+
+        for (const { entry, line } of matches.slice(0, 12)) {
+          const row = document.createElement('li');
+          const link = document.createElement('a');
+          const excerpt = document.createElement('span');
+          link.href = entry.url;
+          link.textContent = entry.title;
+          excerpt.textContent = (entry.lines[line] ?? entry.description).slice(0, 180);
+          link.append(excerpt);
+          row.append(link);
+          results.append(row);
+        }
+      });
+    }
+
+    private shortcut?: (event: KeyboardEvent) => void;
+
+    disconnectedCallback() {
+      if (this.shortcut) document.removeEventListener('keydown', this.shortcut);
+    }
+  }
+
+  if (!customElements.get('iasc-dev-search')) customElements.define('iasc-dev-search', IascDevSearch);
+</script>
+
+<style>
+  button {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    color: var(--sl-color-text);
+    background: var(--sl-color-bg-nav);
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: .5rem;
+    padding: .4rem .7rem;
+    font: inherit;
+    cursor: pointer;
+  }
+
+  dialog {
+    width: min(36rem, calc(100% - 2rem));
+    max-height: 80dvh;
+    margin: min(10vh, 4rem) auto auto;
+    padding: 1rem;
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: .75rem;
+    background: var(--sl-color-bg);
+    color: var(--sl-color-text);
+  }
+
+  dialog::backdrop { background: rgb(0 0 0 / .55); }
+  .search-heading { display: flex; justify-content: space-between; align-items: center; gap: .5rem; }
+  label { font-weight: 600; }
+  input {
+    width: 100%;
+    margin-block: .65rem;
+    padding: .5rem;
+    background: var(--sl-color-bg);
+    color: var(--sl-color-text);
+    border: 1px solid var(--sl-color-gray-4);
+    border-radius: .35rem;
+    font: inherit;
+  }
+  p { margin: 0; }
+  ul { list-style: none; margin: .4rem 0 0; padding: 0; }
+  ul :global(a) {
+    display: block;
+    padding: .5rem;
+    border-block-end: 1px solid var(--sl-color-gray-5);
+    color: var(--sl-color-text-accent);
+    overflow-wrap: anywhere;
+  }
+  ul :global(span) { display: block; font-size: .85rem; color: var(--sl-color-text); }
+</style>
+

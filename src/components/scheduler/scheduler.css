@@ -1,0 +1,137 @@
+.scheduler {
+  container-type: inline-size;
+  display: grid;
+  gap: 1rem;
+  padding: clamp(.75rem, 2vw, 1.25rem);
+  border: 1px solid var(--sl-color-gray-5);
+  border-radius: 1rem;
+  background: var(--sl-color-bg);
+  color: var(--sl-color-text);
+  font-size: .875rem;
+}
+.sim-controls, .sim-results {
+  display: grid;
+  gap: .75rem;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 9rem), 1fr));
+}
+.sim-controls label, .sim-actions label:has(select) { display: grid; gap: .25rem; }
+.sim-actions, .sim-states { display: flex; flex-wrap: wrap; align-items: center; gap: .5rem .75rem; }
+.scheduler :is(button, select) {
+  font: inherit;
+  color: var(--sl-color-white);
+  background: var(--sl-color-bg-nav);
+  border: 1px solid var(--sl-color-gray-4);
+  border-radius: .35rem;
+  padding: .38rem .55rem;
+}
+.scheduler button:not(:disabled) { cursor: pointer; }
+.scheduler button:disabled { opacity: .48; }
+.scheduler button:first-child:not(:disabled) {
+  background: var(--sl-color-text-accent);
+  color: var(--sl-color-bg);
+}
+.sim-scene { height: clamp(13rem, 32dvh, 23rem); background: var(--sl-color-bg-nav); border-radius: .65rem; overflow: hidden; }
+.sim-chip {
+  border-radius: .35rem;
+  padding: .15rem .45rem;
+  background: var(--sl-color-bg-nav);
+  color: var(--sl-color-white);
+  white-space: nowrap;
+  border-inline-start: 3px solid var(--task, var(--sl-color-gray-4));
+}
+.sim-clock { display: flex; flex-wrap: wrap; align-items: baseline; gap: .5rem; }
+.sim-clock strong { color: var(--sl-color-white); font-size: 1.7rem; line-height: 1; }
+.sim-clock, .sim-chip, .sim-results dd { font-variant-numeric: tabular-nums; }
+.sim-results dl { margin: 0; padding: .65rem; background: var(--sl-color-bg-nav); border-radius: .5rem; }
+.sim-results dl div { display: flex; gap: .25rem .75rem; justify-content: space-between; flex-wrap: wrap; }
+.sim-results dd { margin: 0; font-weight: 600; }
+.sim-gantt { display: grid; gap: .35rem; }
+.sim-lane { display: grid; grid-template-columns: 3rem minmax(0, 1fr); align-items: center; }
+.sim-track { display: flex; position: relative; height: 1.45rem; background: var(--sl-color-bg-nav); border-radius: .2rem; }
+.sim-segment { flex: none; overflow: hidden; white-space: nowrap; text-align: center; color: #111827; font-size: .75rem; }
+.sim-running { background: var(--task); }
+.sim-idle, .sim-hide-switch { background: var(--sl-color-gray-4); }
+.sim-blocked { background: repeating-linear-gradient(135deg, #bc5945 0 4px, #853321 4px 8px); }
+.sim-switch:not(.sim-hide-switch) { background: #efb24f; }
+.sim-playhead { position: absolute; inset-block: -.15rem; width: 2px; background: var(--sl-color-white); pointer-events: none; }
+.sim-axis { margin-inline-start: 3rem; display: flex; justify-content: space-between; }
+.sim-legend { color: var(--sl-color-gray-2); }
+
+
+.content-panel:has(.scheduler) {
+  container-type: inline-size;
+}
+
+@supports (width: 1cqi) {
+  .scheduler {
+    width: 100cqi;
+  }
+
+  @media (min-width: 72rem) {
+    .scheduler {
+      margin-inline-start: calc((100% - 100cqi) / 2);
+    }
+  }
+}
+
+.sim-workspace, .sim-preview, .sim-settings {
+  display: grid;
+  gap: 1rem;
+  min-width: 0;
+  align-content: start;
+}
+
+.sim-settings {
+  padding: 1rem;
+  border: 1px solid var(--sl-color-gray-5);
+  border-radius: .65rem;
+  background: var(--sl-color-bg-nav);
+}
+
+.sim-controls select, .sim-settings select {
+  min-width: 0;
+  width: 100%;
+}
+
+@container (min-width: 48rem) {
+  .sim-workspace {
+    grid-template-columns: minmax(0, 1fr) minmax(19rem, 26%);
+    align-items: start;
+  }
+}
+
+.scheduler:fullscreen {
+  width: 100%;
+  height: 100%;
+  margin: 0;
+  padding: clamp(.75rem, 2vw, 1.5rem);
+  border: 0;
+  border-radius: 0;
+  overflow: auto;
+  align-content: start;
+}
+
+.scheduler:fullscreen .sim-scene {
+  height: clamp(13rem, 38dvh, 26rem);
+}
+
+.sim-events {
+  min-width: 0;
+  padding: .6rem .8rem;
+  border-inline-start: 3px solid var(--sl-color-text-accent);
+  background: var(--sl-color-bg-nav);
+  border-radius: .35rem;
+}
+.sim-events ol {
+  max-height: 10rem;
+  overflow-y: auto;
+  list-style: none;
+  margin: .35rem 0 0;
+  padding: 0 .5rem 0 0;
+}
+.sim-events ol > li + li {
+  border-top: 1px solid var(--sl-color-gray-5);
+  margin-top: .35rem;
+  padding-top: .35rem;
+}
+.sim-events ul { margin: .15rem 0 0; padding-inline-start: 1.15rem; }

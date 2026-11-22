@@ -1,0 +1,5 @@
+#starlight__sidebar .top-level > li:has(> details > ul a[href$="/guides/resumen-1/"]) {
+  margin-block-start: 1.25rem;
+  padding-block-start: 1rem;
+  border-block-start: 1px solid var(--sl-color-gray-4);
+}

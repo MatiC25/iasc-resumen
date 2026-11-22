@@ -1,0 +1,10 @@
+.main-pane:has(.pdf-viewer) {
+  --sl-content-width: 100%;
+}
+
+.pdf-viewer {
+  display: block;
+  width: 100%;
+  height: calc(100dvh - var(--sl-nav-height) - 1.5rem);
+  border: 0;
+}
