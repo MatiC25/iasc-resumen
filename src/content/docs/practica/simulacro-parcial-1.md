@@ -21,7 +21,13 @@ Antes de abrir una respuesta, escribí **V o F y una razón concreta**. Si la fr
 <details data-pagefind-ignore>
 <summary>Ver respuesta y justificación</summary>
 
-**Verdadero.** El runtime puede alternar sus turnos cuando una corrutina se suspende. Eso permite concurrencia. La ejecución simultánea de código de CPU requeriría capacidad de cómputo adicional.
+**Verdadero.** C1 y C2 pueden turnarse en el **mismo hilo**. C1 empieza a ejecutar y llega a un `await` cuya I/O todavía está pendiente. El bucle de eventos deja C1 suspendida y le da el hilo a C2. Cuando termina la I/O, C1 queda lista y retoma al recibir otro turno.
+
+![La CPU tiene un solo núcleo y el dibujo muestra dos hilos, th1 y th2. En el ejemplo solo se usa th1: ejecuta C1, ejecuta C2 mientras C1 espera I/O y vuelve a C1.](/diagramas/simulacro-corutinas-un-nucleo.excalidraw.svg)
+
+La espera de C1 se solapa con el trabajo de C2. Como la CPU ejecuta código de una corrutina por vez, hay **concurrencia** sin paralelismo de CPU entre ellas. En el dibujo, las dos corrutinas usan `th1`. `th2` está disponible, pero el ejemplo no lo necesita.
+
+<a href="/diagramas/simulacro-corutinas-un-nucleo.excalidraw.svg" download>Descargar el diagrama editable en Excalidraw</a>
 
 </details>
 
@@ -30,7 +36,15 @@ Antes de abrir una respuesta, escribí **V o F y una razón concreta**. Si la fr
 <details data-pagefind-ignore>
 <summary>Ver respuesta y justificación</summary>
 
-**Falso.** El `await` puede ceder el hilo. Dos tareas pueden leer el mismo valor antes de que cualquiera escriba. El resultado depende del orden de la intercalación.
+**Falso.** En un solo hilo se ejecuta una tarea por vez. Si A llega a un `await` que la suspende, el bucle puede ejecutar B en ese mismo hilo. B puede tocar el mismo dato que A dejó a mitad de actualizar.
+
+| Turno | Qué ocurre | Contador |
+| --- | --- | --- |
+| A | Lee 10 y queda esperando I/O. | 10 |
+| B | Lee 10, suma 1 y escribe 11. | 11 |
+| A | Retoma con el 10 que había guardado y escribe 11. | 11 |
+
+Hubo dos incrementos, pero el resultado quedó en 11. El problema es que **leer, esperar y escribir** quedaron separados por un punto donde otra tarea pudo intervenir. `async` declara la corrutina. La suspensión ocurre cuando el `await` tiene que esperar y cede el control.
 
 </details>
 
@@ -41,6 +55,8 @@ Antes de abrir una respuesta, escribí **V o F y una razón concreta**. Si la fr
 
 **Falso.** El sistema operativo planifica el hilo y puede informar que la I/O está lista. El event loop organiza las tareas y elige qué corrutina reanudar.
 
+![El sistema operativo planifica los hilos. En el hilo 1, el event loop planifica las corrutinas A y B. El hilo 2 ejecuta otro código del programa.](/diagramas/simulacro-event-loop-planificacion.png)
+
 </details>
 
 ### 4. Una función declarada con `async def` puede bloquear todo el event loop si llama a `time.sleep` en su hilo.
@@ -49,6 +65,8 @@ Antes de abrir una respuesta, escribí **V o F y una razón concreta**. Si la fr
 <summary>Ver respuesta y justificación</summary>
 
 **Verdadero.** `time.sleep` bloquea el hilo que lo ejecuta. Declarar la función con `async def` no cambia esa llamada. `await asyncio.sleep(...)` permite que el bucle atienda otras tareas durante la espera.
+
+![[Pasted image 20261124171924.png)]
 
 </details>
 
@@ -59,6 +77,11 @@ Antes de abrir una respuesta, escribí **V o F y una razón concreta**. Si la fr
 
 **Falso.** El GIL limita la ejecución de código Ruby a un hilo por vez en ese modelo. Una llamada de I/O que libera el GIL puede permitir que otro hilo avance. Para la carga de CPU hay que distinguir MRI de JRuby o usar varios procesos.
 
+![[Pasted image 20261124173009.png]]
+
+Lo que es posible es tener procesos corriendo separados, con dos GILs independientes:
+
+![[Pasted image 20261124173036.png]]
 </details>
 
 ### 6. Si un actor vivo está atendiendo un mensaje, un segundo mensaje que se le entrega puede quedar pendiente en el buzón.
@@ -176,6 +199,11 @@ Antes de abrir una respuesta, escribí **V o F y una razón concreta**. Si la fr
 
 **Falso.** Todos los participantes deben votar sí para confirmar. Un solo voto negativo impide el commit. La mayoría de réplicas se usa para otras decisiones, como en Raft.
 
+![[Pasted image 20261124191538.png]]
+
+![[Pasted image 20261124191549.png]]
+
+![[Pasted image 20261124191557.png]]
 </details>
 
 ### 19. Una API replicada en cuatro nodos puede seguir saturada si las cuatro instancias dependen de la misma base de datos saturada.

@@ -3,6 +3,7 @@ import { defineConfig } from 'astro/config';
 import react from '@astrojs/react';
 import { satteri } from '@astrojs/markdown-satteri';
 import starlight from '@astrojs/starlight';
+import { obsidianImages } from './src/markdown/obsidian-images.mjs';
 import { prefixContentUrls } from './src/markdown/prefix-content-urls.mjs';
 
 const base = (process.env.PAGES_BASE ?? '').replace(/\/$/, '');
@@ -11,7 +12,7 @@ const base = (process.env.PAGES_BASE ?? '').replace(/\/$/, '');
 export default defineConfig({
 	site: process.env.PAGES_SITE,
 	base: base || '/',
-	markdown: { processor: satteri({ mdastPlugins: base ? [prefixContentUrls(base)] : [] }) },
+	markdown: { processor: satteri({ mdastPlugins: [obsidianImages(base), ...(base ? [prefixContentUrls(base)] : [])] }) },
 	integrations: [
 		react(),
 		starlight({
@@ -49,6 +50,7 @@ export default defineConfig({
 					label: 'Materiales',
 					items: [
 						{ slug: 'practica/simulacro-parcial-1', label: 'Simulacro del Parcial 1' },
+						{ slug: 'practica/simulacro-2-parcial-1', label: 'Simulacro 2 del Parcial 1' },
 						{
 							label: 'Ejemplos de código',
 							items: [{ autogenerate: { directory: 'ejemplos' } }],
